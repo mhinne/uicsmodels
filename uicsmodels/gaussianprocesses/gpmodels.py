@@ -1,4 +1,4 @@
-from inference import inference_loop, smc_inference_loop
+import inference
 import jax.numpy as jnp
 import jax.random as jrnd
 import matplotlib.pyplot as plt
