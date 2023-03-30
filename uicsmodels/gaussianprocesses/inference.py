@@ -4,6 +4,8 @@ import blackjax
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from blackjax.types import Array, PRNGKey, PyTree
 
+__all__ = ['inference_loop', 'smc_inference_loop']
+
 
 def smc_inference_loop(rng_key: PRNGKey, smc_kernel: Callable, initial_state):
     """The sequential Monte Carlo loop.

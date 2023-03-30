@@ -1,4 +1,4 @@
-import inference
+from . import inference
 import jax.numpy as jnp
 import jax.random as jrnd
 import matplotlib.pyplot as plt
