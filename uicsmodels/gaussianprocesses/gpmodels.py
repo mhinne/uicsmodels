@@ -1,4 +1,5 @@
 from .inference import *
+from .meanfunctions import *
 from .likelihoods import *
 import jax.numpy as jnp
 import jax.random as jrnd
