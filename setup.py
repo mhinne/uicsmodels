@@ -7,7 +7,7 @@ setup(
     author='Max Hinne',
     author_email='max.hinne@donders.ru.nl',
     packages=find_packages(),
-    install-requires=[
+    install_requires=[
         'jax',
         'jaxtyping',
         'distrax @ git+https://github.com/deepmind/distrax.git',
