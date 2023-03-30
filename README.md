@@ -10,5 +10,5 @@ This repository contains some examples of probabilistic models as used by the [U
 ## Installation
 
 ```bash
-  pip install git+https://github.com/mhinne/prob-models.git
+  pip install git+https://github.com/mhinne/uicsmodels.git
 ```
