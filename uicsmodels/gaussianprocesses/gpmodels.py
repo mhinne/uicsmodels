@@ -3,8 +3,10 @@ from .likelihoods import *
 import jax.numpy as jnp
 import jax.random as jrnd
 import matplotlib.pyplot as plt
+import distrax as dx
 
-from typing import NamedTuple
+from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
+from jaxtyping import Array, Float
 
 
 class GibbsState(NamedTuple):
