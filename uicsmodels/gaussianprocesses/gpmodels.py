@@ -2,6 +2,7 @@ from .inference import *
 from .meanfunctions import *
 from .likelihoods import *
 
+import jax
 import jax.numpy as jnp
 import jax.random as jrnd
 import matplotlib.pyplot as plt
@@ -12,6 +13,8 @@ import blackjax.smc.resampling as resampling
 
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from jaxtyping import Array, Float
+
+__version__ = '0.0.1'
 
 
 class GibbsState(NamedTuple):
