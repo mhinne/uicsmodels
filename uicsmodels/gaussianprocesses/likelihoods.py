@@ -3,6 +3,10 @@ import jax.numpy as jnp
 import distrax as dx
 from blackjax.types import Array, PRNGKey, PyTree
 
+from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
+from jaxtyping import Array, Float
+
+
 class AbstractLikelihood(ABC):
 
     @abstractmethod
