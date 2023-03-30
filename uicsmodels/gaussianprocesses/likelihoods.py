@@ -6,6 +6,22 @@ from blackjax.types import Array, PRNGKey, PyTree
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from jaxtyping import Array, Float
 
+def inv_probit(x: Float[Array, "N 1"]) -> Float[Array, "N 1"]:
+    """Compute the inverse probit function.
+
+    Args:
+        x (Float[Array, "N 1"]): 
+            A vector of values.
+    Returns:
+        Float[Array, "N 1"]: 
+            The inverse probit of the input vector.
+        
+    """
+    jitter = 1e-3  # To ensure output is in interval (0, 1).
+    return 0.5 * (1.0 + jsp.special.erf(x / jnp.sqrt(2.0))) * (1 - 2 * jitter) + jitter
+
+#
+
 
 class AbstractLikelihood(ABC):
 
@@ -48,27 +64,12 @@ class Gaussian(AbstractLikelihood):
 
 class Bernoulli(AbstractLikelihood):
 
-    def inv_probit(self, x: Float[Array, "N 1"]) -> Float[Array, "N 1"]:
-        """Compute the inverse probit function.
-
-        Args:
-            x (Float[Array, "N 1"]): 
-                A vector of values.
-        Returns:
-            Float[Array, "N 1"]: 
-                The inverse probit of the input vector.
-            
-        """
-        jitter = 1e-3  # To ensure output is in interval (0, 1).
-        return 0.5 * (1.0 + jsp.special.erf(x / jnp.sqrt(2.0))) * (1 - 2 * jitter) + jitter
-
-    #
 
     def link_function(self, f):
         """Transform f \in R^D to [0,1]^D
 
         """
-        return self.inv_probit(f)
+        return inv_probit(f)
 
     #
 
