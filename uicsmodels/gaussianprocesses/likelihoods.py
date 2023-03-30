@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import jax.numpy as jnp
+import jax.scipy as jsp
 import distrax as dx
 from blackjax.types import Array, PRNGKey, PyTree
 
