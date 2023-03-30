@@ -1,7 +1,10 @@
-from . import inference
+from .inferece import *
+from .likelihoods import *
 import jax.numpy as jnp
 import jax.random as jrnd
 import matplotlib.pyplot as plt
+
+from typing import NamedTuple
 
 
 class GibbsState(NamedTuple):
