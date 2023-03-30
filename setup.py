@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='uicsmodels',
     version='0.0.1',
-    url='https://github.com/mhinne/prob-models',
+    url='https://github.com/mhinne/uicsmodels',
     author='Max Hinne',
     author_email='max.hinne@donders.ru.nl',
     packages=find_packages(),
