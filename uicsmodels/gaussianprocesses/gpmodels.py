@@ -1,10 +1,13 @@
 from .inference import *
 from .meanfunctions import *
 from .likelihoods import *
+
 import jax.numpy as jnp
 import jax.random as jrnd
 import matplotlib.pyplot as plt
 import distrax as dx
+
+from blackjax import elliptical_slice, rmh, adaptive_tempered_smc
 
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from jaxtyping import Array, Float
