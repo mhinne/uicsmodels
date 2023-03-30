@@ -29,10 +29,7 @@ classifiers = [
 ]
 dependencies = [
 	"jax>=0.4.4",
-	"distrax>=0.1.13@git+https://github.com/deepmind/distrax.git",
-	"jaxtyping>=0.0.2",
-    "jaxkern>=0.0.5@git+https://github.com/JaxGaussianProcesses/JaxKern.git",
-	"blackjax>=0.9.7@git+https://github.com/Hesterhuijsdens/blackjax.git",  
+	"distrax>=0.1.13@git+https://github.com/deepmind/distrax.git",  
 ]
 dynamic = ["version"]
 
