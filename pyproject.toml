@@ -29,7 +29,6 @@ classifiers = [
 ]
 dependencies = [
 	"jax>=0.4.4",
-	"distrax>=0.1.13@git+https://github.com/deepmind/distrax.git",  
 ]
 dynamic = ["version"]
 
