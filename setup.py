@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='Prob-models',
+    name='uicsmodels',
     version='0.0.1',
     url='https://github.com/mhinne/prob-models',
     author='Max Hinne',
