@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import distrax as dx
 
 from blackjax import elliptical_slice, rmh, adaptive_tempered_smc
+import blackjax.smc.resampling as resampling
 
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from jaxtyping import Array, Float
