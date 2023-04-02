@@ -58,7 +58,7 @@ class GPModel():
         raise NotImplementedError
         
     #
-    def init_fn(self, key: PRNGKey):
+    def init_fn(self, key: PRNGKey, num_particles=1):
         """Initial state for MCMC/SMC.
         
         """
