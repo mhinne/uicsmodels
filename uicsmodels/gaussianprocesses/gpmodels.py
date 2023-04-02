@@ -98,6 +98,13 @@ class MarginalGPModel(GPModel):
 	
 	"""
 	
+	def __init__(self, X, y,
+                 cov_fn: Optional[Callable],
+                 mean_fn: Callable = None,
+                 priors: Dict = None)
+		 super().__init__(X, y, cov_fn, mean_fn, priors)
+		 
+	#
 	
 
 
