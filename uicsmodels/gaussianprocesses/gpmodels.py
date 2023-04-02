@@ -213,6 +213,30 @@ class MarginalGPModel(GPModel):
          super().__init__(X, y, cov_fn, mean_fn, priors)
          
     #
+	def gibbs_fn(self, key, state, log_likelihood=None, temperature=1.0, kwargs=None):
+		"""The Gibbs MCMC kernel.
+
+        The Gibbs kernel step function takes a state and returns a new state. In
+        the marginal GP model, we can update the hyperparameters of the mean 
+		function, the covariance function, and the observation noise at once.
+		
+		Although one would generally use NUTS to sample these parameters, in our
+		embedding within SMC the benefits of NUTS do not outweigh the cost; SMC
+		will take care of mixing.
+
+        Args:
+            key: 
+                The jax.random.PRNGKey
+            state: GibbsState
+                The current state in the MCMC sampler
+        Returns:
+            GibbsState
+        
+		
+		"""
+	    raise NotImplementedError
+		
+	#
     
 
 
