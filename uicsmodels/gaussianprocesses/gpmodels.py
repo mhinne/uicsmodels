@@ -74,6 +74,114 @@ class GPModel():
         return GibbsState(position=initial_position) 
     
     #
+	def plot_priors(self, xmin=0, xmax=20, n=200, max_params=4):
+        """Visualizes the prior distributions of the model parameters.
+
+        Args:
+            xmin, xmax: 
+                plotting range per distribution
+            n: 
+                plotting resolution
+            max_params: 
+                pre-allocated maximum number of axes per row of figure
+
+        """
+        priors = self.param_priors
+        num_components = len(priors)
+        max_params = 4
+        _, axes = plt.subplots(nrows=num_components, ncols=max_params, constrained_layout=True, figsize=(18, 3*num_components))
+        if num_components == 1:
+            axes = axes[jnp.newaxis, :]
+        for i, component_name in enumerate(priors):
+            for j, param_name in enumerate(priors[component_name]):
+                ax = axes[i, j]
+                x = jnp.linspace(xmin, xmax, n)
+                ax.plot(x, jnp.exp(priors[component_name][param_name].log_prob(x)))
+                ax.set_xlim([xmin, xmax])
+                ax.set_title(param_name)
+            for j in range(len(priors[component_name]), max_params):
+                ax = axes[i, j]
+                ax.axis('off')        
+            axes[i, 0].set_ylabel(component_name)
+        plt.suptitle('Prior distributions')
+
+    #
+	def inference(self, key, mode='smc', sampling_parameters: Dict = None):
+        """A wrapper for training the GP model.
+
+        An interface to Blackjax' MCMC or SMC inference loops, tailored to the 
+        current latent GP model.
+
+        Args:
+            key: jrnd.KeyArray
+                The random number seed, will be split into initialisation and
+                inference.
+            mode: {'mcmc', 'smc'}
+                The desired inference approach. Defaults to SMC, which is
+                generally preffered.
+            sampling_parameters: dict
+                Optional settings with defaults for the inference procedure.
+
+        Returns:
+            Depending on 'mode':
+                smc: 
+                    num_iter: int
+                        Number of tempering iterations.
+                    particles: 
+                        The final states the SMC particles (at T=1).
+                    marginal_likelihood: float
+                        The approximated marginal likelihood of the model.
+                mcmc:
+                    states:
+                        The MCMC states (including burn-in states).
+
+        """
+        if sampling_parameters is None:
+            sampling_parameters = dict()
+            
+        if mode == 'smc':
+            smc = adaptive_tempered_smc(
+                self.logprior_fn(),
+                self.loglikelihood_fn(),
+                self.gibbs_fn,
+                self.smc_init_fn,
+                sampling_parameters.get('gibbs_parameters', dict()),
+                resampling.systematic,
+                sampling_parameters.get('target_ess', 0.5),
+                num_mcmc_steps=sampling_parameters.get('num_mcmc_steps', 50)
+            )
+
+            num_particles = sampling_parameters.get('num_particles', 10_000)
+            key_init, key_smc = jrnd.split(key, 2)
+
+            initial_particles = self.init_fn(key_init, 
+                                             num_particles=num_particles)
+            # We need to initialize SMC with a dictionary
+            initial_smc_state = smc.init(initial_particles.position)  
+
+            num_iter, particles, marginal_likelihood = smc_inference_loop(key_smc, 
+                                                                          smc.step, 
+                                                                          initial_smc_state)
+            
+            self.particles = particles
+            self.marginal_likelihood = marginal_likelihood
+            return particles, num_iter, marginal_likelihood
+        elif mode == 'mcmc':
+            key_init, key_mcmc = jrnd.split(key, 2)
+            # Is there a smarter initialization than from the prior for the MCMC case>
+            initial_state = self.init_fn(key_init)  
+
+            num_burn = sampling_parameters.get('num_burn', 10_000)
+            num_samples = sampling_parameters.get('num_samples', 10_000)
+
+            states = inference_loop(key_mcmc, 
+                                    self.gibbs_fn, 
+                                    initial_state,
+                                    num_burn + num_samples)
+            self.states = states
+            return states
+        else:
+            raise NotImplementedError(f'{mode} is not implemented as inference method')
     
     
 
@@ -162,8 +270,6 @@ class LatentGPModel(GPModel):
         """
 
         initial_state = super().init_fn(key, num_particles)
-
-
         jitter = 1e-6
 
         def sample_latent(key, initial_position_):
@@ -186,16 +292,7 @@ class LatentGPModel(GPModel):
             f = jnp.asarray(mean + jnp.dot(L, z))
             return f.flatten()
 
-        #        
-        # initial_position = dict()   
-        # for component, comp_priors in self.param_priors.items():
-            # for param, param_dist in comp_priors.items():
-                # key, _ = jrnd.split(key)
-                # if num_particles > 1:
-                    # initial_position[param] = param_dist.sample(seed=key, sample_shape=(num_particles, ))
-                # else:
-                    # initial_position[param] = param_dist.sample(seed=key)
-                    
+        #           
         initial_position = initial_state.position
         
         if num_particles > 1:
@@ -525,115 +622,6 @@ class LatentGPModel(GPModel):
         pass
 
     #
-    def plot_priors(self, xmin=0, xmax=20, n=200, max_params=4):
-        """Visualizes the prior distributions of the model parameters.
-
-        Args:
-            xmin, xmax: 
-                plotting range per distribution
-            n: 
-                plotting resolution
-            max_params: 
-                pre-allocated maximum number of axes per row of figure
-
-        """
-        priors = self.param_priors
-        num_components = len(priors)
-        max_params = 4
-        _, axes = plt.subplots(nrows=num_components, ncols=max_params, constrained_layout=True, figsize=(18, 3*num_components))
-        if num_components == 1:
-            axes = axes[jnp.newaxis, :]
-        for i, component_name in enumerate(priors):
-            for j, param_name in enumerate(priors[component_name]):
-                ax = axes[i, j]
-                x = jnp.linspace(xmin, xmax, n)
-                ax.plot(x, jnp.exp(priors[component_name][param_name].log_prob(x)))
-                ax.set_xlim([xmin, xmax])
-                ax.set_title(param_name)
-            for j in range(len(priors[component_name]), max_params):
-                ax = axes[i, j]
-                ax.axis('off')        
-            axes[i, 0].set_ylabel(component_name)
-        plt.suptitle('Prior distributions')
-
-    #
-    def inference(self, key, mode='smc', sampling_parameters: Dict = None):
-        """A wrapper for training the GP model.
-
-        An interface to Blackjax' MCMC or SMC inference loops, tailored to the 
-        current latent GP model.
-
-        Args:
-            key: jrnd.KeyArray
-                The random number seed, will be split into initialisation and
-                inference.
-            mode: {'mcmc', 'smc'}
-                The desired inference approach. Defaults to SMC, which is
-                generally preffered.
-            sampling_parameters: dict
-                Optional settings with defaults for the inference procedure.
-
-        Returns:
-            Depending on 'mode':
-                smc: 
-                    num_iter: int
-                        Number of tempering iterations.
-                    particles: 
-                        The final states the SMC particles (at T=1).
-                    marginal_likelihood: float
-                        The approximated marginal likelihood of the model.
-                mcmc:
-                    states:
-                        The MCMC states (including burn-in states).
-
-        """
-        if sampling_parameters is None:
-            sampling_parameters = dict()
-            
-        if mode == 'smc':
-            smc = adaptive_tempered_smc(
-                self.logprior_fn(),
-                self.loglikelihood_fn(),
-                self.gibbs_fn,
-                self.smc_init_fn,
-                sampling_parameters.get('gibbs_parameters', dict()),
-                resampling.systematic,
-                sampling_parameters.get('target_ess', 0.5),
-                num_mcmc_steps=sampling_parameters.get('num_mcmc_steps', 50)
-            )
-
-            num_particles = sampling_parameters.get('num_particles', 10_000)
-            key_init, key_smc = jrnd.split(key, 2)
-
-            initial_particles = self.init_fn(key_init, 
-                                             num_particles=num_particles)
-            # We need to initialize SMC with a dictionary
-            initial_smc_state = smc.init(initial_particles.position)  
-
-            num_iter, particles, marginal_likelihood = smc_inference_loop(key_smc, 
-                                                                          smc.step, 
-                                                                          initial_smc_state)
-            
-            self.particles = particles
-            self.marginal_likelihood = marginal_likelihood
-            return particles, num_iter, marginal_likelihood
-        elif mode == 'mcmc':
-            key_init, key_mcmc = jrnd.split(key, 2)
-            # Is there a smarter initialization than from the prior for the MCMC case>
-            initial_state = self.init_fn(key_init)  
-
-            num_burn = sampling_parameters.get('num_burn', 10_000)
-            num_samples = sampling_parameters.get('num_samples', 10_000)
-
-            states = inference_loop(key_mcmc, 
-                                    self.gibbs_fn, 
-                                    initial_state,
-                                    num_burn + num_samples)
-            self.states = states
-            return states
-        else:
-            raise NotImplementedError(f'{mode} is not implemented as inference method')
-
 #
 
 
