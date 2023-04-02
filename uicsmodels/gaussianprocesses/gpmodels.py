@@ -73,7 +73,7 @@ class GPModel():
                     initial_position[param] = param_dist.sample(seed=key)					
 		return GibbsState(position=initial_position) 
 	
-	#
+	# 
 	
 	
 
