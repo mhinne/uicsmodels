@@ -29,13 +29,13 @@ class GibbsState(NamedTuple):
 #
 class GPModel():
 	"""The abstract GP model class.
-	
+
 	"""
-	
+
 	def __init__(self, X, y,
-                 cov_fn: Optional[Callable],
-                 mean_fn: Callable = None,
-                 priors: Dict = None):
+				 cov_fn: Optional[Callable],
+				 mean_fn: Callable = None,
+				 priors: Dict = None):
         if jnp.ndim(X) == 1:
             X = X[:, jnp.newaxis]
         self.X, self.y = X, y
