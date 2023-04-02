@@ -74,7 +74,7 @@ class GPModel():
         return GibbsState(position=initial_position) 
     
     #
-	def plot_priors(self, xmin=0, xmax=20, n=200, max_params=4):
+    def plot_priors(self, xmin=0, xmax=20, n=200, max_params=4):
         """Visualizes the prior distributions of the model parameters.
 
         Args:
@@ -106,7 +106,7 @@ class GPModel():
         plt.suptitle('Prior distributions')
 
     #
-	def inference(self, key, mode='smc', sampling_parameters: Dict = None):
+    def inference(self, key, mode='smc', sampling_parameters: Dict = None):
         """A wrapper for training the GP model.
 
         An interface to Blackjax' MCMC or SMC inference loops, tailored to the 
