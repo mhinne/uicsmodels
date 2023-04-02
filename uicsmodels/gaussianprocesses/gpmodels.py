@@ -208,7 +208,7 @@ class LatentGPModel(GPModel):
             key, _ = jrnd.split(key)
             initial_position['f'] = sample_latent(key, initial_position)
 
-        return GibbsState(*initial_position, *initial_state.position)       
+        return GibbsState({**initial_position, **initial_state.position})       
     
     #
     def gibbs_fn(self, key, state, log_likelihood=None, temperature=1.0, kwargs=None):
