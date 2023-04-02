@@ -28,14 +28,14 @@ class GibbsState(NamedTuple):
 
 #
 class GPModel():
-	"""The abstract GP model class.
+    """The abstract GP model class.
+    
+    """
 
-	"""
-
-	def __init__(self, X, y,
-				 cov_fn: Optional[Callable],
-				 mean_fn: Callable = None,
-				 priors: Dict = None):
+    def __init__(self, X, y,
+                 cov_fn: Optional[Callable],
+                 mean_fn: Callable = None,
+                 priors: Dict = None):
         if jnp.ndim(X) == 1:
             X = X[:, jnp.newaxis]
         self.X, self.y = X, y
@@ -48,45 +48,45 @@ class GPModel():
         # TODO:
         # - assert whether all trainable parameters have been assigned priors
         # - add defaults/fixed values for parameters without prior
-		
-	#
-	def predict_f(self, key: PRNGKey, x_pred: PyTree):
-		raise NotImplementedError
-		
-	#
-	def predict_y(self, key: PRNGKey, x_pred: PyTree):
-		raise NotImplementedError
-		
-	#
-	def init_fn(self, key: PRNGKey):
-		"""Initial state for MCMC/SMC.
-		
-		"""
-		
-		initial_position = dict()   
+        
+    #
+    def predict_f(self, key: PRNGKey, x_pred: PyTree):
+        raise NotImplementedError
+        
+    #
+    def predict_y(self, key: PRNGKey, x_pred: PyTree):
+        raise NotImplementedError
+        
+    #
+    def init_fn(self, key: PRNGKey):
+        """Initial state for MCMC/SMC.
+        
+        """
+        
+        initial_position = dict()   
         for component, comp_priors in self.param_priors.items():
             for param, param_dist in comp_priors.items():
                 key, _ = jrnd.split(key)
                 if num_particles > 1:
                     initial_position[param] = param_dist.sample(seed=key, sample_shape=(num_particles, ))
                 else:
-                    initial_position[param] = param_dist.sample(seed=key)					
-		return GibbsState(position=initial_position) 
-	
-	#
-	
-	
+                    initial_position[param] = param_dist.sample(seed=key)                    
+        return GibbsState(position=initial_position) 
+    
+    #
+    
+    
 
 class MarginalGPModel(GPModel):
-	"""The marginal Gaussian process model.
-	
-	In case the likelihood of the GP is Gaussian, we marginalize out the latent 
-	GP f for (much) more efficient inference.
-	
-	The marginal Gaussian process model consists of observations (y), generated 
-	by a Gaussian observation model with hyperparameter sigma as input. The 
-	latent GP itself is parametrized by a mean function (mu) and a covariance 
-	function (cov). These can have optional hyperparameters (psi) and (theta).
+    """The marginal Gaussian process model.
+    
+    In case the likelihood of the GP is Gaussian, we marginalize out the latent 
+    GP f for (much) more efficient inference.
+    
+    The marginal Gaussian process model consists of observations (y), generated 
+    by a Gaussian observation model with hyperparameter sigma as input. The 
+    latent GP itself is parametrized by a mean function (mu) and a covariance 
+    function (cov). These can have optional hyperparameters (psi) and (theta).
 
     The generative model is given by:
 
@@ -95,20 +95,20 @@ class MarginalGPModel(GPModel):
         theta   &\sim p(\theta) \\
         sigma     &\sim p(\sigma) \\
         y       &\sim N(mu, cov + \sigma^2 I_n)
-	
-	"""
-	
-	def __init__(self, X, y,
+    
+    """
+    
+    def __init__(self, X, y,
                  cov_fn: Optional[Callable],
                  mean_fn: Callable = None,
                  priors: Dict = None)
-		 super().__init__(X, y, cov_fn, mean_fn, priors)
-		 
-	#
-	
+         super().__init__(X, y, cov_fn, mean_fn, priors)
+         
+    #
+    
 
 
-	
+    
 class LatentGPModel(GPModel):
     """The latent Gaussian process model.
 
@@ -135,7 +135,7 @@ class LatentGPModel(GPModel):
                  priors: Dict = None,
                  likelihood: AbstractLikelihood = Gaussian):
         self.likelihood = likelihood        
-		super().__init__(X, y, cov_fn, mean_fn, priors)
+        super().__init__(X, y, cov_fn, mean_fn, priors)
         # TODO:
         # - assert whether all trainable parameters have been assigned priors
         # - add defaults/fixed values for parameters without prior
@@ -161,7 +161,7 @@ class LatentGPModel(GPModel):
 
         """
 
-		initial_state = super().init_fn(key, num_particles)
+        initial_state = super().init_fn(key, num_particles)
 
 
         jitter = 1e-6
@@ -195,8 +195,8 @@ class LatentGPModel(GPModel):
                     # initial_position[param] = param_dist.sample(seed=key, sample_shape=(num_particles, ))
                 # else:
                     # initial_position[param] = param_dist.sample(seed=key)
-					
-		initial_position = dict()
+                    
+        initial_position = dict()
         
         if num_particles > 1:
             keys = jrnd.split(key, num_particles)
