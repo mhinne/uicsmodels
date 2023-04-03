@@ -830,7 +830,7 @@ class LatentGPModel(GPModel):
             for k in [kXX, kxX, kxx]:
                 k += jitter * jnp.eye(*k.shape)
 
-            L = jnp.linalg.cholesky(kXX + jitter * jnp.eye(n))
+            L = jnp.linalg.cholesky(kXX + jitter * jnp.eye(self.n))
             alpha = jnp.linalg.solve(L.T, jnp.linalg.solve(L, f))
             v = jnp.linalg.solve(L, kxX)
             predictive_mean = jnp.dot(kxX.T, alpha)
