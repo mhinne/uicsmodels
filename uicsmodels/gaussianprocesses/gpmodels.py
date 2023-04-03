@@ -26,10 +26,11 @@ class GibbsState(NamedTuple):
     """
     position: PyTree
 
+
 #
 class GPModel():
     """The abstract GP model class.
-    
+
     """
 
     def __init__(self, X, y,
@@ -48,32 +49,33 @@ class GPModel():
         # TODO:
         # - assert whether all trainable parameters have been assigned priors
         # - add defaults/fixed values for parameters without prior
-        
+
     #
     def predict_f(self, key: PRNGKey, x_pred: PyTree):
         raise NotImplementedError
-        
+
     #
     def predict_y(self, key: PRNGKey, x_pred: PyTree):
         raise NotImplementedError
-        
+
     #
     def init_fn(self, key: PRNGKey, num_particles=1):
         """Initial state for MCMC/SMC.
-        
+
         """
-        
-        initial_position = dict()   
+
+        initial_position = dict()
         for component, comp_priors in self.param_priors.items():
             for param, param_dist in comp_priors.items():
                 key, _ = jrnd.split(key)
                 if num_particles > 1:
-                    initial_position[param] = param_dist.sample(seed=key, sample_shape=(num_particles, ))
+                    initial_position[param] = param_dist.sample(seed=key, sample_shape=(num_particles,))
                 else:
-                    initial_position[param] = param_dist.sample(seed=key)                    
-        return GibbsState(position=initial_position) 
-    
-    #
+                    initial_position[param] = param_dist.sample(seed=key)
+        return GibbsState(position=initial_position)
+
+        #
+
     def plot_priors(self, xmin=0, xmax=20, n=200, max_params=4):
         """Visualizes the prior distributions of the model parameters.
 
@@ -89,7 +91,8 @@ class GPModel():
         priors = self.param_priors
         num_components = len(priors)
         max_params = 4
-        _, axes = plt.subplots(nrows=num_components, ncols=max_params, constrained_layout=True, figsize=(18, 3*num_components))
+        _, axes = plt.subplots(nrows=num_components, ncols=max_params, constrained_layout=True,
+                               figsize=(18, 3 * num_components))
         if num_components == 1:
             axes = axes[jnp.newaxis, :]
         for i, component_name in enumerate(priors):
@@ -101,7 +104,7 @@ class GPModel():
                 ax.set_title(param_name)
             for j in range(len(priors[component_name]), max_params):
                 ax = axes[i, j]
-                ax.axis('off')        
+                ax.axis('off')
             axes[i, 0].set_ylabel(component_name)
         plt.suptitle('Prior distributions')
 
@@ -138,7 +141,7 @@ class GPModel():
         """
         if sampling_parameters is None:
             sampling_parameters = dict()
-            
+
         if mode == 'smc':
             smc = adaptive_tempered_smc(
                 self.logprior_fn(),
@@ -154,43 +157,42 @@ class GPModel():
             num_particles = sampling_parameters.get('num_particles', 10_000)
             key_init, key_smc = jrnd.split(key, 2)
 
-            initial_particles = self.init_fn(key_init, 
+            initial_particles = self.init_fn(key_init,
                                              num_particles=num_particles)
             # We need to initialize SMC with a dictionary
-            initial_smc_state = smc.init(initial_particles.position)  
+            initial_smc_state = smc.init(initial_particles.position)
 
-            num_iter, particles, marginal_likelihood = smc_inference_loop(key_smc, 
-                                                                          smc.step, 
+            num_iter, particles, marginal_likelihood = smc_inference_loop(key_smc,
+                                                                          smc.step,
                                                                           initial_smc_state)
-            
+
             self.particles = particles
             self.marginal_likelihood = marginal_likelihood
             return particles, num_iter, marginal_likelihood
         elif mode == 'mcmc':
             key_init, key_mcmc = jrnd.split(key, 2)
             # Is there a smarter initialization than from the prior for the MCMC case>
-            initial_state = self.init_fn(key_init)  
+            initial_state = self.init_fn(key_init)
 
             num_burn = sampling_parameters.get('num_burn', 10_000)
             num_samples = sampling_parameters.get('num_samples', 10_000)
 
-            states = inference_loop(key_mcmc, 
-                                    self.gibbs_fn, 
+            states = inference_loop(key_mcmc,
+                                    self.gibbs_fn,
                                     initial_state,
                                     num_burn + num_samples)
             self.states = states
             return states
         else:
             raise NotImplementedError(f'{mode} is not implemented as inference method')
-    
-    
+
 
 class MarginalGPModel(GPModel):
     """The marginal Gaussian process model.
-    
+
     In case the likelihood of the GP is Gaussian, we marginalize out the latent 
     GP f for (much) more efficient inference.
-    
+
     The marginal Gaussian process model consists of observations (y), generated 
     by a Gaussian observation model with hyperparameter sigma as input. The 
     latent GP itself is parametrized by a mean function (mu) and a covariance 
@@ -203,17 +205,18 @@ class MarginalGPModel(GPModel):
         theta   &\sim p(\theta) \\
         sigma     &\sim p(\sigma) \\
         y       &\sim N(mu, cov + \sigma^2 I_n)
-    
+
     """
-    
+
     def __init__(self, X, y,
                  cov_fn: Optional[Callable],
                  mean_fn: Callable = None,
                  priors: Dict = None):
-         super().__init__(X, y, cov_fn, mean_fn, priors)
-         
-    #
-	def gibbs_fn(self, key, state, log_likelihood=None, temperature=1.0, kwargs=None):
+        super().__init__(X, y, cov_fn, mean_fn, priors)
+
+        #
+
+    def gibbs_fn(self, key, state, log_likelihood=None, temperature=1.0, kwargs=None):
         """The Gibbs MCMC kernel.
 
         The Gibbs kernel step function takes a state and returns a new state. In
@@ -228,8 +231,9 @@ class MarginalGPModel(GPModel):
                 The current state in the MCMC sampler
         Returns:
             GibbsState
-        
+
         """
+
         def mcmc_step(key, logdensity: Callable, variables: Dict, stepsize: Float = 0.01):
             """The MCMC step for sampling hyperparameters.
 
@@ -252,8 +256,8 @@ class MarginalGPModel(GPModel):
             """
             key, _ = jrnd.split(key)
             m = len(variables)
-            kernel = rmh(logdensity, sigma=stepsize*jnp.eye(m))
-            substate = kernel.init(variables)            
+            kernel = rmh(logdensity, sigma=stepsize * jnp.eye(m))
+            substate = kernel.init(variables)
             substate, info_ = kernel.step(key, substate)
             return substate.position, info_
 
@@ -263,7 +267,8 @@ class MarginalGPModel(GPModel):
             position.
 
             """
-            return {param: position[param] for param in self.param_priors[component]} if component in self.param_priors else {}
+            return {param: position[param] for param in
+                    self.param_priors[component]} if component in self.param_priors else {}
 
         #
         jitter = 1e-6
@@ -271,11 +276,12 @@ class MarginalGPModel(GPModel):
 
         loglikelihood_fn_ = self.loglikelihood_fn()
         logprior_fn_ = self.logprior_fn()
-        
-        logdensity = lambda state: temperature*loglikelihood_fn_(state) + logprior_fn_(state)
-        new_position, info_ = mcmc_step(key, logdensity, position)            
-               
-        return GibbsState(position=new_position), None  # We return None to satisfy SMC; this needs to be filled with acceptance information
+
+        logdensity = lambda state: temperature * loglikelihood_fn_(state) + logprior_fn_(state)
+        new_position, info_ = mcmc_step(key, logdensity, position)
+
+        return GibbsState(
+            position=new_position), None  # We return None to satisfy SMC; this needs to be filled with acceptance information
 
     #
     def loglikelihood_fn(self) -> Callable:
@@ -289,18 +295,19 @@ class MarginalGPModel(GPModel):
             state.
         """
         jitter = 1e-6
-        
+
         def loglikelihood_fn_(state: GibbsState) -> Float:
             position = getattr(state, 'position', state)
             psi = {param: position[param] for param in self.param_priors['mean']} if 'mean' in self.param_priors else {}
-            theta = {param: position[param] for param in self.param_priors['kernel']} if 'kernel' in self.param_priors else {}
-            
+            theta = {param: position[param] for param in
+                     self.param_priors['kernel']} if 'kernel' in self.param_priors else {}
+
             sigma = state['obs_noise']
-            mean = self.mean_fn.mean(params=psi, x=self.X).flatten()             
-            cov = self.kernel.cross_covariance(params=theta, 
-                                                     x=self.X, 
-                                                     y=self.X) + (sigma**2 + jitter)*jnp.eye(self.n)  
-            logprob = dx.MultivariateNormalFullCovariance(mean, cov).log_prob(self.y) 
+            mean = self.mean_fn.mean(params=psi, x=self.X).flatten()
+            cov = self.kernel.cross_covariance(params=theta,
+                                               x=self.X,
+                                               y=self.X) + (sigma ** 2 + jitter) * jnp.eye(self.n)
+            logprob = dx.MultivariateNormalFullCovariance(mean, cov).log_prob(self.y)
             return logprob
 
         #
@@ -352,7 +359,7 @@ class MarginalGPModel(GPModel):
         - predict using either SMC or MCMC output
         - predict from prior if desired
         """
-                
+
         @jax.jit
         def sample_predictive_f(key, x_pred: PyTree, **state_variables):
             """Sample latent f for new points x_pred given one posterior sample.
@@ -380,12 +387,14 @@ class MarginalGPModel(GPModel):
                 A single posterior predictive sample f*
 
             """
+
             def get_parameters_for(component):
                 """Extract parameter sampled values per model component for current 
                 position.
 
                 """
-                return {param: state_variables[param] for param in self.param_priors[component]} if component in self.param_priors else {}
+                return {param: state_variables[param] for param in
+                        self.param_priors[component]} if component in self.param_priors else {}
 
             #
 
@@ -398,39 +407,39 @@ class MarginalGPModel(GPModel):
             sigma = get_parameters_for('likelihood')['obs_noise']
 
             kXX = self.kernel.cross_covariance(params=theta, x=self.X, y=self.X)
-            kXX += sigma**2 * jnp.eye(*kXX.shape)  # add observation noise
-            kxX = self.kernel.cross_covariance(params=theta, x=self.X, y=x_pred) 
-            kxx = self.kernel.cross_covariance(params=theta, x=x_pred, y=x_pred)  
+            kXX += sigma ** 2 * jnp.eye(*kXX.shape)  # add observation noise
+            kxX = self.kernel.cross_covariance(params=theta, x=self.X, y=x_pred)
+            kxx = self.kernel.cross_covariance(params=theta, x=x_pred, y=x_pred)
             for k in [kXX, kxX, kxx]:
-                k += jitter*jnp.eye(*k.shape)                                                                                 
+                k += jitter * jnp.eye(*k.shape)
 
             L = jnp.linalg.cholesky(kXX + jitter * jnp.eye(n))
             alpha = jnp.linalg.solve(L.T, jnp.linalg.solve(L, self.y))
             v = jnp.linalg.solve(L, kxX)
             predictive_mean = jnp.dot(kxX.T, alpha)
-            predictive_var = kxx - jnp.dot(v.T, v) + jitter*jnp.eye(*kxx.shape)
+            predictive_var = kxx - jnp.dot(v.T, v) + jitter * jnp.eye(*kxx.shape)
 
             C = jnp.linalg.cholesky(predictive_var)
-            z = jrnd.normal(key, shape=(len(x_pred), ))
+            z = jrnd.normal(key, shape=(len(x_pred),))
 
             f_samples = predictive_mean + jnp.dot(C, z)
             return f_samples
-        
+
         #
 
         num_particles = gp.particles.particles['obs_noise'].shape[0]
         key_samples = jrnd.split(key, num_particles)
 
-        f_pred = jax.vmap(sample_predictive_f, 
-                in_axes=(0, None))(key_samples, x_pred, **gp.particles.particles)
+        f_pred = jax.vmap(sample_predictive_f,
+                          in_axes=(0, None))(key_samples, x_pred, **gp.particles.particles)
         return f_pred
 
     #
-    
-    
+
+
 #
 
-    
+
 class LatentGPModel(GPModel):
     """The latent Gaussian process model.
 
@@ -456,7 +465,7 @@ class LatentGPModel(GPModel):
                  mean_fn: Callable = None,
                  priors: Dict = None,
                  likelihood: AbstractLikelihood = Gaussian):
-        self.likelihood = likelihood        
+        self.likelihood = likelihood
         super().__init__(X, y, cov_fn, mean_fn, priors)
         # TODO:
         # - assert whether all trainable parameters have been assigned priors
@@ -495,9 +504,9 @@ class LatentGPModel(GPModel):
 
             if 'kernel' in self.param_priors.keys():
                 cov_params = {param: initial_position_[param] for param in self.param_priors['kernel']}
-                cov = self.kernel.cross_covariance(params=cov_params, 
-                                                            x=self.X,
-                                                            y=self.X) + jitter*jnp.eye(self.n)
+                cov = self.kernel.cross_covariance(params=cov_params,
+                                                   x=self.X,
+                                                   y=self.X) + jitter * jnp.eye(self.n)
             else:
                 cov = jnp.eye(self.n)
 
@@ -508,20 +517,21 @@ class LatentGPModel(GPModel):
 
         #           
         initial_position = initial_state.position
-        
+
         if num_particles > 1:
             keys = jrnd.split(key, num_particles)
             # We vmap across the first dimension of the elements *in* the 
             # dictionary, rather than over the dictionary itself.
-            initial_position['f'] = jax.vmap(sample_latent, 
-                                             in_axes=(0, {k: 0 for k in initial_position}))(keys, initial_position)            
+            initial_position['f'] = jax.vmap(sample_latent,
+                                             in_axes=(0, {k: 0 for k in initial_position}))(keys, initial_position)
         else:
             key, _ = jrnd.split(key)
             initial_position['f'] = sample_latent(key, initial_position)
 
-        return GibbsState(initial_position)       
-    
-    #
+        return GibbsState(initial_position)
+
+        #
+
     def gibbs_fn(self, key, state, log_likelihood=None, temperature=1.0, kwargs=None):
         """The Gibbs MCMC kernel.
 
@@ -537,8 +547,9 @@ class LatentGPModel(GPModel):
                 The current state in the MCMC sampler
         Returns:
             GibbsState
-        
+
         """
+
         def mcmc_step(key, logdensity: Callable, variables: Dict, stepsize: Float = 0.01):
             """The MCMC step for sampling hyperparameters.
 
@@ -561,7 +572,7 @@ class LatentGPModel(GPModel):
             """
             key, _ = jrnd.split(key)
             kernel = rmh(logdensity, sigma=stepsize)
-            substate = kernel.init(variables)            
+            substate = kernel.init(variables)
             substate, info_ = kernel.step(key, substate)
             return substate.position, info_
 
@@ -571,14 +582,15 @@ class LatentGPModel(GPModel):
             position.
 
             """
-            return {param: position[param] for param in self.param_priors[component]} if component in self.param_priors else {}
+            return {param: position[param] for param in
+                    self.param_priors[component]} if component in self.param_priors else {}
 
         #
         jitter = 1e-6
         position = state.position.copy()
 
         """Sample the latent GP using:
-            
+
         p(f | theta, psi, y) \propto p(y | f, phi) p(f | psi, theta)
 
         """
@@ -589,14 +601,14 @@ class LatentGPModel(GPModel):
         mean = self.mean_fn.mean(params=psi, x=self.X).flatten()
 
         theta = get_parameters_for('kernel')
-        cov = self.kernel.cross_covariance(params=theta, 
-                                                 x=self.X, y=self.X) + jitter*jnp.eye(self.n)  
-            
-        latent_sampler = elliptical_slice(loglikelihood_fn_, 
-                                          mean=mean, 
+        cov = self.kernel.cross_covariance(params=theta,
+                                           x=self.X, y=self.X) + jitter * jnp.eye(self.n)
+
+        latent_sampler = elliptical_slice(loglikelihood_fn_,
+                                          mean=mean,
                                           cov=cov)
-        f = position['f'] 
-        state_f = latent_sampler.init(f)  
+        f = position['f']
+        state_f = latent_sampler.init(f)
         key, _ = jrnd.split(key)
         state_f, info_f = latent_sampler.step(key, state_f)
         f = state_f.position
@@ -604,17 +616,19 @@ class LatentGPModel(GPModel):
 
         if len(psi):
             """Sample parameters of the mean function using: 
-            
+
             p(psi | f, theta) \propto p(f | psi, theta)p(psi)
 
-            """         
+            """
+
             def logdensity_fn_(psi_):
                 log_pdf = 0
                 for param, val in psi_.items():
-                    log_pdf += self.param_priors['mean'][param].log_prob(val) 
-                mean = self.mean_fn.mean(params=psi_, x=self.X).flatten()    
-                log_pdf += dx.MultivariateNormalFullCovariance(mean, cov).log_prob(f) 
+                    log_pdf += self.param_priors['mean'][param].log_prob(val)
+                mean = self.mean_fn.mean(params=psi_, x=self.X).flatten()
+                log_pdf += dx.MultivariateNormalFullCovariance(mean, cov).log_prob(f)
                 return log_pdf
+
             #
             sub_state, _ = mcmc_step(key, logdensity_fn_, psi, stepsize=0.1)
             for param, val in sub_state.items():
@@ -625,42 +639,47 @@ class LatentGPModel(GPModel):
 
         if len(theta):
             """Sample parameters of the kernel function using: 
-            
+
             p(theta | f, psi) \propto p(f | psi, theta)p(theta)
 
-            """           
+            """
+
             def logdensity_fn_(theta_):
                 log_pdf = 0
                 for param, val in theta_.items():
                     log_pdf += self.param_priors['kernel'][param].log_prob(val)
-                cov_ = self.kernel.cross_covariance(params=theta_, x=self.X, y=self.X) + jitter*jnp.eye(self.n)  
-                log_pdf += dx.MultivariateNormalFullCovariance(mean, cov_).log_prob(f) 
+                cov_ = self.kernel.cross_covariance(params=theta_, x=self.X, y=self.X) + jitter * jnp.eye(self.n)
+                log_pdf += dx.MultivariateNormalFullCovariance(mean, cov_).log_prob(f)
                 return log_pdf
+
             #
             sub_state, _ = mcmc_step(key, logdensity_fn_, theta, stepsize=0.1)
             for param, val in sub_state.items():
                 position[param] = val
         #
-        
+
         if len(phi):
             """Sample parameters of the likelihood using: 
-            
+
             p(\phi | y, f) \propto p(y | f, phi)p(phi)
 
-            """            
+            """
+
             def logdensity_fn_(phi_):
                 log_pdf = 0
                 for param, val in phi_.items():
                     log_pdf += self.param_priors['likelihood'][param].log_prob(val)
                 log_pdf += jnp.sum(self.likelihood.log_prob(params=phi_, f=f, y=self.y))
                 return log_pdf
+
             #
             sub_state, _ = mcmc_step(key, logdensity_fn_, phi, stepsize=0.1)
             for param, val in sub_state.items():
                 position[param] = val
         #              
-               
-        return GibbsState(position=position), None  # We return None to satisfy SMC; this needs to be filled with acceptance information
+
+        return GibbsState(
+            position=position), None  # We return None to satisfy SMC; this needs to be filled with acceptance information
 
     #
     def smc_init_fn(self, position: PyTree, kwargs):
@@ -674,7 +693,7 @@ class LatentGPModel(GPModel):
             A Gibbs state object.
         """
         return GibbsState(position)
-    
+
     #
     def loglikelihood_fn(self) -> Callable:
         """Returns the log-likelihood function for the model given a state.
@@ -686,11 +705,12 @@ class LatentGPModel(GPModel):
             A function that computes the log-likelihood of the model given a 
             state.
         """
-        
+
         def loglikelihood_fn_(state: GibbsState) -> Float:
             # position = state.position
             position = getattr(state, 'position', state)
-            phi = {param: position[param] for param in self.param_priors['likelihood']} if 'likelihood' in self.param_priors else {}
+            phi = {param: position[param] for param in
+                   self.param_priors['likelihood']} if 'likelihood' in self.param_priors else {}
             f = position['f']
             log_pdf = jnp.sum(self.likelihood.log_prob(params=phi, f=f, y=self.y))
             return log_pdf
@@ -720,13 +740,14 @@ class LatentGPModel(GPModel):
                     logprob += dist.log_prob(position[param])
             # plus the logprob of the latent f itself
             psi = {param: position[param] for param in self.param_priors['mean']} if 'mean' in self.param_priors else {}
-            theta = {param: position[param] for param in self.param_priors['kernel']} if 'kernel' in self.param_priors else {}
-            mean = self.mean(params=psi, 
-                                            x=self.X).flatten() 
-            cov = self.kernel.cross_covariance(params=theta, 
-                                                     x=self.X, 
-                                                     y=self.X) + jitter*jnp.eye(self.n)  
-            logprob +=dx.MultivariateNormalFullCovariance(mean, cov).log_prob(position['f']) 
+            theta = {param: position[param] for param in
+                     self.param_priors['kernel']} if 'kernel' in self.param_priors else {}
+            mean = self.mean(params=psi,
+                             x=self.X).flatten()
+            cov = self.kernel.cross_covariance(params=theta,
+                                               x=self.X,
+                                               y=self.X) + jitter * jnp.eye(self.n)
+            logprob += dx.MultivariateNormalFullCovariance(mean, cov).log_prob(position['f'])
             return logprob
 
         #
@@ -754,7 +775,7 @@ class LatentGPModel(GPModel):
         - predict using either SMC or MCMC output
         - predict from prior if desired
         """
-                
+
         @jax.jit
         def sample_predictive_f(key, x_pred: PyTree, **state_variables):
             """Sample latent f for new points x_pred given one posterior sample.
@@ -782,12 +803,14 @@ class LatentGPModel(GPModel):
                 A single posterior predictive sample f*
 
             """
+
             def get_parameters_for(component):
                 """Extract parameter sampled values per model component for current 
                 position.
 
                 """
-                return {param: state_variables[param] for param in self.param_priors[component]} if component in self.param_priors else {}
+                return {param: state_variables[param] for param in
+                        self.param_priors[component]} if component in self.param_priors else {}
 
             #
 
@@ -799,11 +822,11 @@ class LatentGPModel(GPModel):
             mean = self.mean_fn.mean(params=psi, x=self.X).flatten()
             theta = get_parameters_for('kernel')
 
-            kXX = self.kernel.cross_covariance(params=theta, x=self.X, y=self.X) 
-            kxX = self.kernel.cross_covariance(params=theta, x=self.X, y=x_pred) 
-            kxx = self.kernel.cross_covariance(params=theta, x=x_pred, y=x_pred)  
+            kXX = self.kernel.cross_covariance(params=theta, x=self.X, y=self.X)
+            kxX = self.kernel.cross_covariance(params=theta, x=self.X, y=x_pred)
+            kxx = self.kernel.cross_covariance(params=theta, x=x_pred, y=x_pred)
             for k in [kXX, kxX, kxx]:
-                k += jitter*jnp.eye(*k.shape)                                                                                 
+                k += jitter * jnp.eye(*k.shape)
 
             L = jnp.linalg.cholesky(kXX + jitter * jnp.eye(n))
             alpha = jnp.linalg.solve(L.T, jnp.linalg.solve(L, f))
@@ -813,21 +836,21 @@ class LatentGPModel(GPModel):
 
             if self.X.shape[0] < 20:
                 # heuristic for numerical stability
-                predictive_var += jitter*jnp.eye(*kxx.shape)
+                predictive_var += jitter * jnp.eye(*kxx.shape)
 
             C = jnp.linalg.cholesky(predictive_var)
-            z = jrnd.normal(key, shape=(len(x_pred), ))
+            z = jrnd.normal(key, shape=(len(x_pred),))
 
             f_samples = predictive_mean + jnp.dot(C, z)
             return f_samples
-        
+
         #
 
         num_particles = self.particles.particles['f'].shape[0]
         key_samples = jrnd.split(key, num_particles)
 
-        f_pred = jax.vmap(sample_predictive_f, 
-               in_axes=(0, None))(key_samples, x_pred, **self.particles.particles)
+        f_pred = jax.vmap(sample_predictive_f,
+                          in_axes=(0, None))(key_samples, x_pred, **self.particles.particles)
         return f_pred
 
     #
