@@ -20,7 +20,7 @@ __version__ = '0.0.1'
 class GibbsState(NamedTuple):
     """State of the Gibbs kernel.
 
-    The Gibbs kernel takes one state containing all parameters of the latent 
+    The Gibbs kernel takes one state containing all parameters of the latent
     Gaussian process model, and returns a new state.
 
     """
@@ -74,17 +74,30 @@ class GPModel():
                     initial_position[param] = param_dist.sample(seed=key)
         return GibbsState(position=initial_position)
 
-        #
+    #
+    def smc_init_fn(self, position: PyTree, kwargs):
+        """Simply wrap the position dictionary in a GibbsState object. 
+
+        Args:
+            position: dict
+                Current assignment of the state values
+            kwargs: not used in our Gibbs kernel
+        Returns:
+            A Gibbs state object.
+        """
+        return GibbsState(position)
+
+    #
 
     def plot_priors(self, xmin=0, xmax=20, n=200, max_params=4):
         """Visualizes the prior distributions of the model parameters.
 
         Args:
-            xmin, xmax: 
+            xmin, xmax:
                 plotting range per distribution
-            n: 
+            n:
                 plotting resolution
-            max_params: 
+            max_params:
                 pre-allocated maximum number of axes per row of figure
 
         """
@@ -112,7 +125,7 @@ class GPModel():
     def inference(self, key, mode='smc', sampling_parameters: Dict = None):
         """A wrapper for training the GP model.
 
-        An interface to Blackjax' MCMC or SMC inference loops, tailored to the 
+        An interface to Blackjax' MCMC or SMC inference loops, tailored to the
         current latent GP model.
 
         Args:
@@ -127,10 +140,10 @@ class GPModel():
 
         Returns:
             Depending on 'mode':
-                smc: 
+                smc:
                     num_iter: int
                         Number of tempering iterations.
-                    particles: 
+                    particles:
                         The final states the SMC particles (at T=1).
                     marginal_likelihood: float
                         The approximated marginal likelihood of the model.
@@ -190,12 +203,12 @@ class GPModel():
 class MarginalGPModel(GPModel):
     """The marginal Gaussian process model.
 
-    In case the likelihood of the GP is Gaussian, we marginalize out the latent 
+    In case the likelihood of the GP is Gaussian, we marginalize out the latent
     GP f for (much) more efficient inference.
 
-    The marginal Gaussian process model consists of observations (y), generated 
-    by a Gaussian observation model with hyperparameter sigma as input. The 
-    latent GP itself is parametrized by a mean function (mu) and a covariance 
+    The marginal Gaussian process model consists of observations (y), generated
+    by a Gaussian observation model with hyperparameter sigma as input. The
+    latent GP itself is parametrized by a mean function (mu) and a covariance
     function (cov). These can have optional hyperparameters (psi) and (theta).
 
     The generative model is given by:
@@ -220,12 +233,12 @@ class MarginalGPModel(GPModel):
         """The Gibbs MCMC kernel.
 
         The Gibbs kernel step function takes a state and returns a new state. In
-        the latent GP model, the latent GP (f) is first updated, then the 
+        the latent GP model, the latent GP (f) is first updated, then the
         parameters of the mean (psi) and covariance function (theta), and lastly
         the parameters of the observation model (phi).
 
         Args:
-            key: 
+            key:
                 The jax.random.PRNGKey
             state: GibbsState
                 The current state in the MCMC sampler
@@ -238,7 +251,7 @@ class MarginalGPModel(GPModel):
             """The MCMC step for sampling hyperparameters.
 
             This updates the hyperparameters of the mean, covariance function
-            and likelihood, if any. Currently, this uses a random-walk 
+            and likelihood, if any. Currently, this uses a random-walk
             Metropolis step function, but other Blackjax options are available.
 
             Args:
@@ -263,7 +276,7 @@ class MarginalGPModel(GPModel):
 
         #
         def get_parameters_for(component):
-            """Extract parameter sampled values per model component for current 
+            """Extract parameter sampled values per model component for current
             position.
 
             """
@@ -291,7 +304,7 @@ class MarginalGPModel(GPModel):
             None
 
         Returns:
-            A function that computes the log-likelihood of the model given a 
+            A function that computes the log-likelihood of the model given a
             state.
         """
         jitter = 1e-6
@@ -355,7 +368,7 @@ class MarginalGPModel(GPModel):
             f_samples: An array of samples of f^* from p(f^* | x^*, x, y)
 
 
-        todo: 
+        todo:
         - predict using either SMC or MCMC output
         - predict from prior if desired
         """
@@ -389,7 +402,7 @@ class MarginalGPModel(GPModel):
             """
 
             def get_parameters_for(component):
-                """Extract parameter sampled values per model component for current 
+                """Extract parameter sampled values per model component for current
                 position.
 
                 """
@@ -445,8 +458,8 @@ class LatentGPModel(GPModel):
 
     The latent Gaussian process model consists of observations (y), generated by
     an observation model that takes the latent Gaussian process (f) and optional
-    hyperparameters (phi) as input. The latent GP itself is parametrized by a 
-    mean function (mu) and a covariance function (cov). These can have optional 
+    hyperparameters (phi) as input. The latent GP itself is parametrized by a
+    mean function (mu) and a covariance function (cov). These can have optional
     hyperparameters (psi) and (theta).
 
     The generative model is given by:
@@ -476,14 +489,14 @@ class LatentGPModel(GPModel):
         """Initialization of the Gibbs state.
 
         The initial state is determined by sampling all variables from their
-        priors, and then constructing one sample for (f) using these. All 
+        priors, and then constructing one sample for (f) using these. All
         variables together are stored in a dict() in the GibbsState object.
 
         When num_particles > 1, each dict element contains num_particles random
         initial values.
 
         Args:
-            key: 
+            key:
                 The jax.random.PRNGKey
             num_particles: int
                 The number of parallel particles for sequential Monte Carlo
@@ -515,12 +528,12 @@ class LatentGPModel(GPModel):
             f = jnp.asarray(mean + jnp.dot(L, z))
             return f.flatten()
 
-        #           
+        #
         initial_position = initial_state.position
 
         if num_particles > 1:
             keys = jrnd.split(key, num_particles)
-            # We vmap across the first dimension of the elements *in* the 
+            # We vmap across the first dimension of the elements *in* the
             # dictionary, rather than over the dictionary itself.
             initial_position['f'] = jax.vmap(sample_latent,
                                              in_axes=(0, {k: 0 for k in initial_position}))(keys, initial_position)
@@ -536,12 +549,12 @@ class LatentGPModel(GPModel):
         """The Gibbs MCMC kernel.
 
         The Gibbs kernel step function takes a state and returns a new state. In
-        the latent GP model, the latent GP (f) is first updated, then the 
+        the latent GP model, the latent GP (f) is first updated, then the
         parameters of the mean (psi) and covariance function (theta), and lastly
         the parameters of the observation model (phi).
 
         Args:
-            key: 
+            key:
                 The jax.random.PRNGKey
             state: GibbsState
                 The current state in the MCMC sampler
@@ -554,7 +567,7 @@ class LatentGPModel(GPModel):
             """The MCMC step for sampling hyperparameters.
 
             This updates the hyperparameters of the mean, covariance function
-            and likelihood, if any. Currently, this uses a random-walk 
+            and likelihood, if any. Currently, this uses a random-walk
             Metropolis step function, but other Blackjax options are available.
 
             Args:
@@ -578,7 +591,7 @@ class LatentGPModel(GPModel):
 
         #
         def get_parameters_for(component):
-            """Extract parameter sampled values per model component for current 
+            """Extract parameter sampled values per model component for current
             position.
 
             """
@@ -676,23 +689,10 @@ class LatentGPModel(GPModel):
             sub_state, _ = mcmc_step(key, logdensity_fn_, phi, stepsize=0.1)
             for param, val in sub_state.items():
                 position[param] = val
-        #              
+        #
 
         return GibbsState(
             position=position), None  # We return None to satisfy SMC; this needs to be filled with acceptance information
-
-    #
-    def smc_init_fn(self, position: PyTree, kwargs):
-        """Simply wrap the position dictionary in a GibbsState object. 
-
-        Args:
-            position: dict
-                Current assignment of the state values
-            kwargs: not used in our Gibbs kernel
-        Returns:
-            A Gibbs state object.
-        """
-        return GibbsState(position)
 
     #
     def loglikelihood_fn(self) -> Callable:
@@ -702,7 +702,7 @@ class LatentGPModel(GPModel):
             None
 
         Returns:
-            A function that computes the log-likelihood of the model given a 
+            A function that computes the log-likelihood of the model given a
             state.
         """
 
@@ -771,7 +771,7 @@ class LatentGPModel(GPModel):
             f_samples: An array of samples of f^* from p(f^* | x^*, x, y)
 
 
-        todo: 
+        todo:
         - predict using either SMC or MCMC output
         - predict from prior if desired
         """
@@ -805,7 +805,7 @@ class LatentGPModel(GPModel):
             """
 
             def get_parameters_for(component):
-                """Extract parameter sampled values per model component for current 
+                """Extract parameter sampled values per model component for current
                 position.
 
                 """
