@@ -836,9 +836,9 @@ class LatentGPModel(GPModel):
             predictive_mean = jnp.dot(kxX.T, alpha)
             predictive_var = kxx - jnp.dot(v.T, v)
 
-            if self.X.shape[0] < 20:
-                # heuristic for numerical stability
-                predictive_var += jitter * jnp.eye(*kxx.shape)
+            # if self.X.shape[0] < 20:
+            # heuristic for numerical stability
+            predictive_var += jitter * jnp.eye(*kxx.shape)
 
             C = jnp.linalg.cholesky(predictive_var)
             z = jrnd.normal(key, shape=(len(x_pred),))
