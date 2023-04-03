@@ -477,7 +477,9 @@ class LatentGPModel(GPModel):
                  cov_fn: Optional[Callable],
                  mean_fn: Callable = None,
                  priors: Dict = None,
-                 likelihood: AbstractLikelihood = Gaussian):
+                 likelihood: AbstractLikelihood = None):
+        if likelihood is None:
+            likelihood = Gaussian()
         self.likelihood = likelihood
         super().__init__(X, y, cov_fn, mean_fn, priors)
         # TODO:
