@@ -440,11 +440,11 @@ class MarginalGPModel(GPModel):
 
         #
 
-        num_particles = gp.particles.particles['obs_noise'].shape[0]
+        num_particles = self.particles.particles['obs_noise'].shape[0]
         key_samples = jrnd.split(key, num_particles)
 
         f_pred = jax.vmap(sample_predictive_f,
-                          in_axes=(0, None))(key_samples, x_pred, **gp.particles.particles)
+                          in_axes=(0, None))(key_samples, x_pred, **self.particles.particles)
         return f_pred
 
     #
