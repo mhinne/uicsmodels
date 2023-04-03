@@ -27,6 +27,51 @@ class GibbsState(NamedTuple):
     position: PyTree
 
 #
+class GPModel():
+
+    def __init__(self):
+        pass
+        
+    #
+    def init_fn(self):
+        raise NotImplementedError()
+        
+    #
+    def gibbs_fn(self):
+        raise NotImplementedError()
+    
+    #
+    def smc_init_fn(self):
+        raise NotImplementedError()
+    
+    #
+    def loglikelihood_fn(self):
+        raise NotImplementedError()
+    
+    #
+    def logprior_fn(self):
+        raise NotImplementedError()
+    
+    #
+    def predict_f(self):
+        raise NotImplementedError()
+    
+    #
+    def predict_y(self):
+        raise NotImplementedError()
+    
+    #
+    def plot_priors(self):
+        raise NotImplementedError()
+    
+    #
+    def inference(self):
+        raise NotImplementedError()
+    
+    #
+    
+
+
 class LatentGPModel():
     """The latent Gaussian process model.
 
