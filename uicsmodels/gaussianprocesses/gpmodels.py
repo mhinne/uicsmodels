@@ -515,7 +515,8 @@ class LatentGPModel(GPModel):
                 mean_params = {param: initial_position_[param] for param in self.param_priors['mean_function']}
                 mean = self.mean_fn.mean(params=mean_params, x=self.X)
             else:
-                mean = jnp.zeros_like(self.X)
+#                 mean = jnp.zeros_like(self.X)
+                mean = jnp.zeros((self.X.shape[0], ))
 
             if 'kernel' in self.param_priors.keys():
                 cov_params = {param: initial_position_[param] for param in self.param_priors['kernel']}
