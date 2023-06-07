@@ -517,6 +517,8 @@ class LatentGPModel(GPModel):
             else:
 #                 mean = jnp.zeros_like(self.X)
                 mean = jnp.zeros((self.X.shape[0], ))
+            if jnp.ndim(mean) == 1:
+                mean = mean[:, jnp.newaxis]
 
             if 'kernel' in self.param_priors.keys():
                 cov_params = {param: initial_position_[param] for param in self.param_priors['kernel']}
