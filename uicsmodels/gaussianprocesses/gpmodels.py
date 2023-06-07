@@ -316,7 +316,8 @@ class MarginalGPModel(GPModel):
                      self.param_priors['kernel']} if 'kernel' in self.param_priors else {}
 
             sigma = state['obs_noise']
-            mean = self.mean_fn.mean(params=psi, x=self.X).flatten()
+#             mean = self.mean_fn.mean(params=psi, x=self.X).flatten()
+            mean = self.mean_fn.mean(params=psi, x=self.X)
             cov = self.kernel.cross_covariance(params=theta,
                                                x=self.X,
                                                y=self.X) + (sigma ** 2 + jitter) * jnp.eye(self.n)
