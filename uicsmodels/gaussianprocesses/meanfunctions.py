@@ -13,7 +13,7 @@ class MeanFunction(ABC):
 class Zero(MeanFunction):
 
     def mean(self, params, x):
-        return jnp.zeros_like(x)
+        return jnp.zeros((x.shape[0], ))
     
     #
 #
@@ -21,7 +21,7 @@ class Zero(MeanFunction):
 class Constant(MeanFunction):
 
     def mean(self, params, x):
-        return params['c'] * jnp.ones_like(x)
+        return params['c'] * jnp.ones((x.shape[0], ))
 
     #
 #
