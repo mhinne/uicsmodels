@@ -14,7 +14,7 @@ import blackjax.smc.resampling as resampling
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from jaxtyping import Array, Float
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 class GibbsState(NamedTuple):
