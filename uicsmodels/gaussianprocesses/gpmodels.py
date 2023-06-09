@@ -227,7 +227,7 @@ class MarginalGPModel(GPModel):
                  priors: Dict = None):
         super().__init__(X, y, cov_fn, mean_fn, priors)
 
-        #
+    #
 
     def gibbs_fn(self, key, state, log_likelihood=None, temperature=1.0, kwargs=None):
         """The Gibbs MCMC kernel.
@@ -268,20 +268,14 @@ class MarginalGPModel(GPModel):
 
             """
             key, _ = jrnd.split(key)
-            m = len(variables)
+            m = 0
+            for varname, varval in variables.items():
+                m += varval.shape[0] if varval.shape else 1
+
             kernel = rmh(logdensity, sigma=stepsize * jnp.eye(m))
             substate = kernel.init(variables)
             substate, info_ = kernel.step(key, substate)
             return substate.position, info_
-
-        #
-        def get_parameters_for(component):
-            """Extract parameter sampled values per model component for current
-            position.
-
-            """
-            return {param: position[param] for param in
-                    self.param_priors[component]} if component in self.param_priors else {}
 
         #
         jitter = 1e-6
@@ -344,7 +338,7 @@ class MarginalGPModel(GPModel):
                 # mean, kernel, likelihood
                 for param, dist in params.items():
                     # parameters per component
-                    logprob += dist.log_prob(position[param])
+                    logprob += jnp.sum(dist.log_prob(position[param]))
             return logprob
 
         #
