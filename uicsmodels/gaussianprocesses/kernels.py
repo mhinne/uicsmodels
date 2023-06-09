@@ -8,6 +8,11 @@ from jax.nn import softmax
 
 class SpectralMixture(jk.base.AbstractKernel):
 
+    def __init__(self) -> None:
+        # Note: we don't want to inherit here.
+        pass
+        
+    #
     def __call__(
         self, params: Dict, x: Float[Array, "1 D"], y: Float[Array, "1 D"]
     ) -> Float[Array, "1"]:
@@ -33,6 +38,7 @@ class SpectralMixture(jk.base.AbstractKernel):
         return  XX + YY - XY
 
     #
+
     def cross_covariance(self, params: Dict, x, y):
         """Computes the discontinuous cross-covariance.
 
