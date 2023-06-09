@@ -14,7 +14,7 @@ class SpectralMixture(jk.base.AbstractKernel):
         return self.cross_covariance(params, x, y)
 
     #
-    def __euclidean_distance_einsum(X, Y):
+    def __euclidean_distance_einsum(self, X, Y):
         """Efficiently calculates the euclidean distance
         between two vectors using Numpys einsum function.
 
