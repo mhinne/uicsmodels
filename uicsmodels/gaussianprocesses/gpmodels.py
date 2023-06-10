@@ -14,8 +14,7 @@ import blackjax.smc.resampling as resampling
 from typing import Callable, Tuple, Union, NamedTuple, Dict, Any, Optional
 from jaxtyping import Array, Float
 
-__version__ = '0.0.3'
-
+__version__ = '0.0.4'
 
 class GibbsState(NamedTuple):
     """State of the Gibbs kernel.
@@ -475,7 +474,7 @@ class LatentGPModel(GPModel):
         if likelihood is None:
             likelihood = Gaussian()
         self.likelihood = likelihood
-        super().__init__(X, y, cov_fn, mean_fn, priors)
+        super().__init__(X, y, cov_fn, mean_fn, priors)        
         # TODO:
         # - assert whether all trainable parameters have been assigned priors
         # - add defaults/fixed values for parameters without prior
@@ -583,7 +582,11 @@ class LatentGPModel(GPModel):
 
             """
             key, _ = jrnd.split(key)
-            kernel = rmh(logdensity, sigma=stepsize)
+            m = 0
+            for varname, varval in variables.items():
+                m += varval.shape[0] if varval.shape else 1
+
+            kernel = rmh(logdensity, sigma=stepsize * jnp.eye(m))
             substate = kernel.init(variables)
             substate, info_ = kernel.step(key, substate)
             return substate.position, info_
@@ -636,7 +639,7 @@ class LatentGPModel(GPModel):
             def logdensity_fn_(psi_):
                 log_pdf = 0
                 for param, val in psi_.items():
-                    log_pdf += self.param_priors['mean'][param].log_prob(val)
+                    log_pdf += jnp.sum(self.param_priors['mean'][param].log_prob(val))
                 mean = self.mean_fn.mean(params=psi_, x=self.X).flatten()
                 log_pdf += dx.MultivariateNormalFullCovariance(mean, cov).log_prob(f)
                 return log_pdf
@@ -659,7 +662,7 @@ class LatentGPModel(GPModel):
             def logdensity_fn_(theta_):
                 log_pdf = 0
                 for param, val in theta_.items():
-                    log_pdf += self.param_priors['kernel'][param].log_prob(val)
+                    log_pdf += jnp.sum(self.param_priors['kernel'][param].log_prob(val))
                 cov_ = self.kernel.cross_covariance(params=theta_, x=self.X, y=self.X) + jitter * jnp.eye(self.n)
                 log_pdf += dx.MultivariateNormalFullCovariance(mean, cov_).log_prob(f)
                 return log_pdf
@@ -680,7 +683,7 @@ class LatentGPModel(GPModel):
             def logdensity_fn_(phi_):
                 log_pdf = 0
                 for param, val in phi_.items():
-                    log_pdf += self.param_priors['likelihood'][param].log_prob(val)
+                    log_pdf += jnp.sum(self.param_priors['likelihood'][param].log_prob(val))
                 log_pdf += jnp.sum(self.likelihood.log_prob(params=phi_, f=f, y=self.y))
                 return log_pdf
 
@@ -704,7 +707,6 @@ class LatentGPModel(GPModel):
             A function that computes the log-likelihood of the model given a
             state.
         """
-
         def loglikelihood_fn_(state: GibbsState) -> Float:
             # position = state.position
             position = getattr(state, 'position', state)
@@ -736,13 +738,12 @@ class LatentGPModel(GPModel):
                 # mean, kernel, likelihood
                 for param, dist in params.items():
                     # parameters per component
-                    logprob += dist.log_prob(position[param])
+                    logprob += jnp.sum(dist.log_prob(position[param]))
             # plus the logprob of the latent f itself
             psi = {param: position[param] for param in self.param_priors['mean']} if 'mean' in self.param_priors else {}
             theta = {param: position[param] for param in
                      self.param_priors['kernel']} if 'kernel' in self.param_priors else {}
-            mean = self.mean(params=psi,
-                             x=self.X).flatten()
+            mean = self.mean_fn.mean(params=psi, x=self.X).flatten()
             cov = self.kernel.cross_covariance(params=theta,
                                                x=self.X,
                                                y=self.X) + jitter * jnp.eye(self.n)
