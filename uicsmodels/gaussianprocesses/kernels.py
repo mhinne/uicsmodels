@@ -42,15 +42,34 @@ class SpectralMixture(jk.base.AbstractKernel):
     def cross_covariance(self, params: Dict, x, y):
         """Computes the discontinuous cross-covariance.
 
-        The bread-and-butter of the discontinuity analysis removes all 
-        correlations between observations on different sides of the threshold 
-        x0.
+        The spectral mixture kernel is defined as
+
+        .. math::
+
+            \mu_q ~ N(.,.), for q = 1..Q
+            log \nu_q ~ N(., .), for q = 1..Q
+            beta_q ~ N(., .), for q = 2..Q
+            w = softmax_centered(beta)
+            k(tau) = \sum_{q=1}^Q w_q \prod_{i=1}^D \exp[-2pi^2 tau_i^2 \nu_q^({i})] cos(2pi tau_i \mu_q^{(i)}),
+
+            with tau = x - y.        
+
+        Importantly, we enforce identifiability of the posterior of these 
+        parameters in two ways. First, w is drawn from a centered softmax, which
+        ensures w_q > 0 and \sum w_q = 1, but in addition the weights are 
+        anchored around the first element which is always forced to zero (i.e. 
+        we sample only beta_2, ..., beta_Q, and set beta_1 = 0). Second, we sort
+        the vector of means so that the smallest frequency component is always
+        the first.
+
+        This does not yet work in higher dimensions, as the sorting needs to be 
+        defined there.
 
         Args:
             params: Parameters of the base kernel.
             x, y: points to determine covariance for
         Returns:
-            an nxm matrix of cross covariances (n = len(x), m = len(y))
+            an n x m matrix of cross covariances (n = len(x), m = len(y))
         """
 
         def compsum(res, el):
@@ -64,6 +83,8 @@ class SpectralMixture(jk.base.AbstractKernel):
         beta = params['beta']
         w = softmax(jnp.insert(beta, 0, 0))
         mu = params['mu']
+        # To solve the identifiability issue in mixture models, we sort according to the means:
+        mu = jnp.sort(mu)
         nu = params['nu']     
 
         K, _ = jax.lax.scan(compsum, jnp.zeros((x.shape[0], y.shape[0])), (w, mu, nu))        
