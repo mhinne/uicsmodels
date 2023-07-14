@@ -42,7 +42,7 @@ def smc_inference_loop(rng_key: PRNGKey, smc_kernel: Callable, initial_state):
         return i + 1, state, k, curr_log_likelihood + info.log_likelihood_increment
 
     #
-    n_iter, final_state, _, info = jax.lax.while_loop(cond, jax.jit(one_step), 
+    n_iter, final_state, _, info = jax.lax.while_loop(cond, one_step, 
                                                       (0, initial_state, rng_key, 0))
     return n_iter, final_state, info
 
