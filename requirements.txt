@@ -1,4 +1,4 @@
-git+https://github.com/deepmind/distrax 
+distrax @ git+https://github.com/deepmind/distrax@f6e656c
 jaxtyping>=0.0.2
 git+https://github.com/JaxGaussianProcesses/JaxKern
 git+https://github.com/Hesterhuijsdens/blackjax
